@@ -1,0 +1,109 @@
+---
+# =============================================
+# INSTALL DOCKER ENGINE
+# =============================================
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  become: yes
+
+- name: Install dependencies Docker
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - apt-transport-https
+    state: present
+  become: yes
+
+- name: Buat direktori keyring
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Download GPG key Docker
+  shell: |
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+  become: yes
+
+- name: Tambah repository Docker
+  shell: |
+    echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/ubuntu \
+    $(lsb_release -cs) stable" | \
+    tee /etc/apt/sources.list.d/docker.list > /dev/null
+  args:
+    creates: /etc/apt/sources.list.d/docker.list
+  become: yes
+
+- name: Update apt setelah tambah repo Docker
+  apt:
+    update_cache: yes
+  become: yes
+
+- name: Install Docker Engine
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+  become: yes
+
+- name: Start dan enable service Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Tambah user ubuntu ke group docker
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes
+  become: yes
+
+# =============================================
+# SETUP FIREWALL UFW (Port 22 saja)
+# =============================================
+
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
+  become: yes
+
+- name: Reset UFW ke default
+  ufw:
+    state: reset
+  become: yes
+
+- name: Izinkan port 22 (SSH)
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+  become: yes
+
+- name: Set UFW default incoming deny
+  ufw:
+    default: deny
+    direction: incoming
+  become: yes
+
+- name: Aktifkan UFW
+  ufw:
+    state: enabled
+  become: yes

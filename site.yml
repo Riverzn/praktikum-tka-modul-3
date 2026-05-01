@@ -1,0 +1,6 @@
+---
+- name: Install Docker Engine pada semua node
+  hosts: all
+  become: yes
+  roles:
+    - docker
