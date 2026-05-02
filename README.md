@@ -423,7 +423,7 @@ touch roles/backend/tasks/main.yml \
 
 `roles/backend/files/app/index.js`:
 
-```json
+```javascript
 const express = require('express');
 const app = express();
 app.get('/', (req, res) => res.status(200).send('Backend Operational'));
@@ -596,7 +596,7 @@ Added on `site.yml`:
 
 ---
 
-## End-toEnd Verification
+## End-to-End Verification
 
 Due to multipass utilizing dynamic DHCP allocation, IP Addresses may differ from one device to another. Here are our solutions to resolve that in each of our devices:
 
