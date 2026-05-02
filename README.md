@@ -391,22 +391,50 @@ This message shows that your installation appears to be working correctly.
 
 ## Praktikan 2: Jonathan | Setup Backend
 
-### Step 1: Setup Backend Roles
+### Step 1: Setup Bakend Roles Directory
 
 ```bash
-mkdir -p roles/backend/{tasks,templates,vars}
+mkdir -p roles/backend/{tasks,templates,vars,files/app}
 touch roles/backend/tasks/main.yml \
       roles/backend/templates/Dockerfile.j2 \
       roles/backend/templates/docker-compose.yml.j2 \
       roles/backend/templates/.env.j2 \
-      roles/backend/vars/main.yml
+      roles/backend/vars/main.yml \
+      roles/backend/files/app/package.json \
+      roles/backend/files/app/index.js
 ```
  
-# Step 2: Setup Configuration Mapping
+### Step 2: Setup Application Source Code
+
+`roles/backend/files/app/package.json`:
+
+```json
+{
+  "name": "backend-service",
+  "main": "index.js",
+  "scripts": {
+      "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+`roles/backend/files/app/index.js`:
+
+```json
+const express = require('express');
+const app = express();
+app.get('/', (req, res) => res.status(200).send('Backend Operational'));
+app.listen(process.env.PORT || 3000);
+```
+
+### Step 3: Configuration Mapping
 
 `vars/main.yml`:
 
-```yml
+```yaml
 db_name: "backend_db"
 db_username: "admin"
 db_password: "securepassword123"
@@ -457,7 +485,7 @@ services:
 ```
 
 `tasks/main.yml`:
-```yml
+```yaml
 # application directory
 - name: Create backend directory
   ansible.builtin.file:
@@ -481,6 +509,11 @@ services:
     - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
     - { src: '.env.j2', dest: '.env' }
 
+- name: Copy application source code
+  ansible.builtin.copy:
+    src: app/
+    dest: /opt/backend/
+
 - name: Start backend services with Docker Compose
   ansible.builtin.command:
     cmd: docker compose up -d --build
@@ -499,7 +532,7 @@ services:
 
 Add these lines into `/site.yml`: 
 
-```yml
+```yaml
 - name: Deploy Backend Service
   hosts: backend
   become: yes
@@ -507,6 +540,91 @@ Add these lines into `/site.yml`:
     - backend
 ```
 
+---
+
+## Praktikan 3: Prabaswara | Setup Frontend Proxy
+
+### Step 1: Make Frontend Role
+
+Command:
+
+```bash 
+mkdir -p roles/frontend/tasks
+```
+
+`roles/frontend/tasks/main.yml`:
+
+```
+---
+- name: Create frontend deployment directory
+  ansible.builtin.file:
+    path: /opt/frontend
+    state: directory
+
+- name: Allow HTTP port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: Generate frontend Docker Compose payload
+  ansible.builtin.copy:
+    dest: /opt/frontend/docker-compose.yml
+    content: |
+      services:
+        web:
+          image: nginx:alpine
+          ports:
+            - "80:80"
+          restart: always
+
+- name: Start frontend services with Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: /opt/frontend
+```
+
+Added on `site.yml`:
+
+```yaml
+- name: Deploy Frontend Service
+  hosts: frontend
+  become: yes
+  roles:
+    - frontend
+```
+
+---
+
+## End-toEnd Verification
+
+Due to multipass utilizing dynamic DHCP allocation, IP Addresses may differ from one device to another. Here are our solutions to resolve that in each of our devices:
+
+1. Discover Current IP Allocations:
+
+    ```bash
+    # Identify IPv4 addresses for `node1` and `node2`
+    multipass list
+    ```
+
+    > [!NOTE]
+    > Make sure Multipass on Windows Powershell is already connected to WSL2
+
+2. Validate Backend Infrastructure: 
+
+    ```bash
+    curl http://<NODE1_IP>:3000
+    ```
+
+    > Expected output: `Backend Operational`
+
+3. Validate Frontend Infrastructure:
+
+    ```bash
+    curl http://<NODE2_IP> 
+    ```
+
+    > Expected output: _Nginx Welcome HTML_
 
 ---
 
