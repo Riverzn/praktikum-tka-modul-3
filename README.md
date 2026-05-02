@@ -389,6 +389,125 @@ This message shows that your installation appears to be working correctly.
 
 ---
 
+## Praktikan 2: Jonathan | Setup Backend
+
+### Step 1: Setup Backend Roles
+
+```bash
+mkdir -p roles/backend/{tasks,templates,vars}
+touch roles/backend/tasks/main.yml \
+      roles/backend/templates/Dockerfile.j2 \
+      roles/backend/templates/docker-compose.yml.j2 \
+      roles/backend/templates/.env.j2 \
+      roles/backend/vars/main.yml
+```
+ 
+# Step 2: Setup Configuration Mapping
+
+`vars/main.yml`:
+
+```yml
+db_name: "backend_db"
+db_username: "admin"
+db_password: "securepassword123"
+backend_port: "3000"
+jwt_secret: "supersecretjwtkey"
+```
+
+`Dockerfile.j2`: 
+
+```j2
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE {{ backend_port }}
+CMD ["npm", "start"]
+```
+
+`.env.j2`:
+
+```j2
+DB_NAME={{ db_name }}
+DB_USER={{ db_username }}
+DB_PASS={{ db_password }}
+PORT={{ backend_port }}
+JWT_SECRET={{ jwt_secret }}
+```
+
+`docker-compose.yml.j2`:
+
+```j2
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: {{ db_name }}
+      POSTGRES_USER: {{ db_username }}
+      POSTGRES_PASSWORD: {{ db_password }}
+  backend:
+    build: .
+    ports:
+      - "{{ backend_port }}:{{ backend_port }}"
+    env_file:
+      - .env
+    depends_on:
+      - db
+```
+
+`tasks/main.yml`:
+```yml
+# application directory
+- name: Create backend directory
+  ansible.builtin.file:
+    path: /opt/backend
+    state: directory
+
+# firewall expose specified backend port
+- name: Allow backend port
+  community.general.ufw:
+    rule: allow
+    port: "{{ backend_port }}"
+    proto: tcp
+
+# transfers templates to target 
+- name: Copy backend configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/opt/backend/{{ item.dest }}"
+  loop:
+    - { src: 'Dockerfile.j2', dest: 'Dockerfile' }
+    - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
+    - { src: '.env.j2', dest: '.env' }
+
+- name: Start backend services with Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose up -d --build
+    chdir: /opt/backend
+
+- name: Health check backend service
+  ansible.builtin.uri:
+    url: "http://localhost:{{ backend_port }}"
+    method: GET
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 5
+  delay: 10
+```
+
+Add these lines into `/site.yml`: 
+
+```yml
+- name: Deploy Backend Service
+  hosts: backend
+  become: yes
+  roles:
+    - backend
+```
+
+
 ---
 
 *Praktikum TKA 2026 — Modul 3 Ansible*

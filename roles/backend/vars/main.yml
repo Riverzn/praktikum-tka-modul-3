@@ -1,0 +1,6 @@
+db_name: "backend_db"
+db_username: "admin"
+db_password: "securepassword123"
+backend_port: "3000"
+jwt_secret: "supersecretjwtkey"
+

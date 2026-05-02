@@ -4,3 +4,10 @@
   become: yes
   roles:
     - docker
+
+- name: Deploy Backend Service
+  hosts: backend
+  become: yes
+  roles:
+    - backend
+

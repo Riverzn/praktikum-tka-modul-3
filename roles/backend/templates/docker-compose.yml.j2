@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: {{ db_name }}
+      POSTGRES_USER: {{ db_username }}
+      POSTGRES_PASSWORD: {{ db_password }}
+  backend:
+    build: .
+    ports:
+      - "{{ backend_port }}:{{ backend_port }}"
+    env_file:
+      - .env
+    depends_on:
+      - db
+
