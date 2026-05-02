@@ -416,7 +416,9 @@ touch roles/backend/tasks/main.yml \
       "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "jsonwebtoken": "^9.0.2"
   }
 }
 ```
@@ -425,8 +427,35 @@ touch roles/backend/tasks/main.yml \
 
 ```javascript
 const express = require('express');
+const { Pool } = require('pg');
+const jwt = require('jsonwebtoken');
+
 const app = express();
+app.use(express.json());
+
+const pool = new Pool({
+    user: process.env.DB_USER,
+    host: 'db',
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASS,
+    port: 5432,
+});
+
 app.get('/', (req, res) => res.status(200).send('Backend Operational'));
+
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Missing arguments' });
+    try {
+        const client = await pool.connect(); 
+        client.release();
+        const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.status(201).json({ message: 'User registered successfully', token });
+    } catch (err) {
+        res.status(500).json({ error: 'DB Connection Error', details: err.message });
+    }
+});
+
 app.listen(process.env.PORT || 3000);
 ```
 
@@ -539,6 +568,53 @@ Add these lines into `/site.yml`:
   roles:
     - backend
 ```
+
+### Step 5: Validation
+
+1. Check roles that have been made
+
+    ```bash
+    tree roles/backend
+    ```
+
+2. Check environment variables 
+
+    ```bash
+    cat roles/backend/vars/main.yml
+    ```
+
+3. Check Dockerfile
+
+    ```bash
+    cat roles/backend/templates/Dockerfile.j2
+    ```
+
+4. Check template Jinja2
+
+    ```bash 
+    cat roles/backend/templates/.env.j2
+    cat roles/backend/templates/docker-compose.yml.j2
+    ```
+
+5. Check playbook
+
+    ```bash 
+    cat roles/backend/tasks/main.yml
+    ssh node1 "sudo ufw status"
+    ssh node1 "cd /opt/backend && sudo docker compose ps"
+    ```
+6. Check main playbook
+
+    ```bash
+    cat site.yml
+    ```
+
+7. Check if everything is working
+
+    ```bash
+    curl http://172.20.249.45:3000
+    curl http://172.20.249.45:3000 -H "Content-Type: application/json" -d {"username":"test","password":"thisIsPassword123"}
+    ```
 
 ---
 
