@@ -11,3 +11,9 @@
   roles:
     - backend
 
+- name: Deploy Frontend Service
+  hosts: frontend
+  become: yes
+  roles: 
+    - frontend
+

@@ -21,6 +21,11 @@
     - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
     - { src: '.env.j2', dest: '.env' }
 
+- name: Copy application source code
+  ansible.builtin.copy:
+    src: app/
+    dest: /opt/backend/
+
 - name: Start backend services with Docker Compose
   ansible.builtin.command:
     cmd: docker compose up -d --build

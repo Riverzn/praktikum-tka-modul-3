@@ -1,0 +1,27 @@
+---
+- name: Create frontend deployment directory
+  ansible.builtin.file:
+    path: /opt/frontend
+    state: directory
+
+- name: Allow HTTP port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: Generate frontend Docker Compose payload
+  ansible.builtin.copy:
+    dest: /opt/frontend/docker-compose.yml
+    content: |
+      services:
+        web:
+          image: nginx:alpine
+          ports:
+            - "80:80"
+          restart: always
+
+- name: Start frontend services with Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: /opt/frontend
